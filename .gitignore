@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs and debug files
+*.log
+*.out
+*.err
+
+# Temporary files
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# IDE-specific files
+.idea/
+.vscode/
+*.code-workspace
+
+# Data files (optional, if you don't want to upload generated data)
+data/
+
+# Compiled binary files
+*.o
+*.pyc
+*.exe
+*.dll
+*.bin
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Test artifacts
+.cache/
+.tox/
+*.egg-info/
