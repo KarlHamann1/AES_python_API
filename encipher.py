@@ -11,7 +11,7 @@ class EncipherAPI:
     CMD_GET_STATE = b'1'
     CMD_ENCRYPT = b'2'
 
-    def __init__(self, port, baudrate=115200, timeout=1):
+    def __init__(self, port, baudrate=9600, timeout=1):
         self.ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         time.sleep(2)
         print(f"Connected to Arduino on {port}")

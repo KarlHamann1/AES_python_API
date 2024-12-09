@@ -3,6 +3,7 @@ from encipher import EncipherAPI
 from picoscope_acquisition import DataAcquisition
 
 
+
 def batch_acquisition(num_rounds=1000, sampling_rate=1e6, duration=0.01):
     """
     Perform multiple rounds of data acquisition for cryptographic analysis.
@@ -51,8 +52,10 @@ def batch_acquisition(num_rounds=1000, sampling_rate=1e6, duration=0.01):
 if __name__ == "__main__":
     # Configuration
     NUM_ROUNDS = 1000       # Number of acquisition rounds
-    SAMPLING_RATE = 1e6     # Sampling rate in Hz
-    DURATION = 0.01         # Acquisition duration in seconds
+    #SAMPLING_RATE = 1e6     # Sampling rate in Hz
+    #DURATION = 0.01         # Acquisition duration in seconds
 
     # Run batch acquisition
-    batch_acquisition(num_rounds=NUM_ROUNDS, sampling_rate=SAMPLING_RATE, duration=DURATION)
+    batch_acquisition(num_rounds=NUM_ROUNDS, 
+    #sampling_rate=SAMPLING_RATE, duration=DURATION
+    )

@@ -35,7 +35,7 @@ def repeat_arithmetic(num_rounds=1000):
 
 if __name__ == "__main__":
     # Configuration
-    NUM_ROUNDS = 1000  # Number of repetitions
+    NUM_ROUNDS = 10000  # Number of repetitions
 
     # Start the process
     repeat_arithmetic(num_rounds=NUM_ROUNDS)

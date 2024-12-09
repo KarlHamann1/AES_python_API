@@ -31,8 +31,8 @@ class DataAcquisition:
         print(f"Trigger set on {self.trigger_channel} (Rising edge, threshold = 0V).")
 
         # Configure sampling and buffer size
-        self.scope.setSamplingInterval(1 / self.sampling_rate, int(self.sampling_rate * self.duration))
-        print(f"Sampling configured: {self.sampling_rate} Hz for {self.duration}s.")
+        #self.scope.setSamplingInterval(1 / self.sampling_rate, int(self.sampling_rate * self.duration))
+        #print(f"Sampling configured: {self.sampling_rate} Hz for {self.duration}s.")
 
     def start_acquisition(self, round_number=None):
         # Start acquisition on hardware trigger
