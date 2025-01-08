@@ -2,15 +2,14 @@ import numpy as np
 from encipher import EncipherAPI
 from picoscope_acquisition import DataAcquisition
 
-def batch_no_encryption(num_rounds=1000, sampling_rate=1e6, duration=0.01):
+def batch_no_encryption(num_rounds=1000, sampling_rate=1e9, duration=20e-6, filename_prefix= "no_encrypt"):
     """
-    Perform multiple rounds of data acquisition without cryptographic operations.
-    
-    :param num_rounds: Number of rounds to repeat the acquisition process.
-    :param sampling_rate: Sampling rate for Picoscope.
-    :param duration: Duration for each data capture.
+    Performs multiple rounds of data acquisition without cryptographic operations.
     """
-    encipher = EncipherAPI(port="COM3")
+    # Creates an instance of the EncipherAPI to maintain a consistent interface
+    encipher = EncipherAPI(port="COM5")
+
+    # Creates an instance of the DataAcquisition class with chosen settings
     data_acquisition = DataAcquisition(
         sampling_rate=sampling_rate,
         duration=duration,
@@ -20,31 +19,34 @@ def batch_no_encryption(num_rounds=1000, sampling_rate=1e6, duration=0.01):
     )
 
     try:
-        # Setup Picoscope
+        # Initializes PicoScope with configured channel, trigger, and timebase
         data_acquisition.setup_picoscope()
 
-        # Repeat acquisition process
+        # Repeats the data acquisition process for the specified number of rounds
         for round_number in range(1, num_rounds + 1):
             print(f"Starting round {round_number}/{num_rounds} without encryption...")
 
-            # Set a dummy state (not used, but ensures sync)
+            # Sets a dummy state (no encryption is performed)
             dummy_state = b'\x00' * 16
             encipher.set_state(dummy_state)
 
-            # Trigger and capture without performing encryption
+            # Triggers the scope and captures one trace
             data_acquisition.start_acquisition(round_number)
 
         print(f"Completed {num_rounds} rounds of acquisition without encryption.")
 
     finally:
-        # Clean up
+        # Closes the EncipherAPI connection
         encipher.close()
+
+        # Closes the PicoScope connection
         data_acquisition.close()
 
 
 if __name__ == "__main__":
-    # Configuration
-    NUM_ROUNDS = 1000       # Number of acquisition rounds
-
-    # Run batch acquisition without encryption
-    batch_no_encryption(num_rounds=NUM_ROUNDS)
+    # Example configuration for 1000 acquisitions at 1 GS/s, 20 µs capture
+    batch_no_encryption(
+        num_rounds=1000,
+        sampling_rate=1e9,
+        duration=20e-6
+    )

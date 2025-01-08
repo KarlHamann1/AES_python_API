@@ -2,18 +2,17 @@ import numpy as np
 from encipher import EncipherAPI
 from picoscope_acquisition import DataAcquisition
 
-
-
-def batch_acquisition(num_rounds=1000, sampling_rate=1e6, duration=0.01):
+def batch_acquisition(num_rounds=100, sampling_rate=1e9, duration=0.01, filename_prefix= "encrypt"):
     """
-    Perform multiple rounds of data acquisition for cryptographic analysis.
+    Performs multiple rounds of data acquisition for cryptographic analysis.
+    """
+    # Sets up a random number generator
+    rng = np.random.default_rng()
     
-    :param num_rounds: Number of rounds to repeat the acquisition process.
-    :param sampling_rate: Sampling rate for Picoscope.
-    :param duration: Duration for each data capture.
-    """
-    rng = np.random.default_rng()  # Random number generator
-    encipher = EncipherAPI(port="COM3")
+    # Creates an instance of the EncipherAPI to communicate with the device
+    encipher = EncipherAPI(port="COM5")
+
+    # Creates an instance of the DataAcquisition class with chosen settings
     data_acquisition = DataAcquisition(
         sampling_rate=sampling_rate,
         duration=duration,
@@ -23,39 +22,43 @@ def batch_acquisition(num_rounds=1000, sampling_rate=1e6, duration=0.01):
     )
 
     try:
-        # Setup Picoscope
+        # Initializes PicoScope with configured channel, trigger, and timebase
         data_acquisition.setup_picoscope()
 
-        # Repeat acquisition process
+        # Repeats the data acquisition process for the specified number of rounds
         for round_number in range(1, num_rounds + 1):
             print(f"Starting round {round_number}/{num_rounds}...")
 
-            # Generate random 16-byte plaintext
+            # Generates a random 16-byte plaintext
             plaintext = rng.integers(0, 256, size=16, dtype=np.uint8).tobytes()
             print(f"Generated plaintext: {plaintext.hex()}")
 
-            # Set random plaintext state
+            # Sets the plaintext on the device
             encipher.set_state(plaintext)
 
-            # Start encryption and data acquisition
+            # Triggers the cryptographic operation
             encipher.encrypt()
+
+            # Captures one trace of data from the PicoScope
             data_acquisition.start_acquisition(round_number)
 
         print(f"Completed {num_rounds} rounds of acquisition.")
 
     finally:
-        # Clean up
+        # Closes the EncipherAPI connection
         encipher.close()
+
+        # Closes the PicoScope connection
         data_acquisition.close()
 
 
 if __name__ == "__main__":
     # Configuration
     NUM_ROUNDS = 1000       # Number of acquisition rounds
-    #SAMPLING_RATE = 1e6     # Sampling rate in Hz
-    #DURATION = 0.01         # Acquisition duration in seconds
+    SAMPLING_RATE = 1e9     # Sampling rate in Hz
+    DURATION = 0.01         # Acquisition duration in seconds
 
     # Run batch acquisition
     batch_acquisition(num_rounds=NUM_ROUNDS, 
-    #sampling_rate=SAMPLING_RATE, duration=DURATION
+    sampling_rate=SAMPLING_RATE, duration=DURATION
     )
