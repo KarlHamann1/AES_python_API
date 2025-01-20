@@ -9,9 +9,9 @@ class DataAcquisition:
     def __init__(
         self,
         sampling_rate=1e9,   # 1 GS/s
-        duration=20e-6,      # 20 microseconds total capture
+        duration=0.012,       # 12 ms total capture
         channel="A",
-        trigger_channel="EXT",
+        trigger_channel="B",
         output_dir="data",
         filename_prefix=None
     ):
@@ -47,10 +47,10 @@ class DataAcquisition:
             else:
                 raise
 
-        # Sets channel to DC mode with ±5 V range
+        # Configures the chosen channel for data acquisition
         channel = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.channel}"]
-        coupling = ps.PS5000A_COUPLING["PS5000A_DC"]
-        ch_range_enum = ps.PS5000A_RANGE["PS5000A_5V"]
+        coupling = ps.PS5000A_COUPLING["PS5000A_AC"]  # AC coupling
+        ch_range_enum = ps.PS5000A_RANGE["PS5000A_100MV"] # 100 mV range
         status = ps.ps5000aSetChannel(self.chandle, channel, 1, coupling, ch_range_enum, 0)
         assert_pico_ok(status)
         print(f"Channel {self.channel} configured for data acquisition.")
@@ -84,7 +84,7 @@ class DataAcquisition:
         self.max_samples = total_samples
 
         # Calculates timebase for the chosen sampling rate
-        timebase = int(1e9 / self.sampling_rate)
+        timebase = 2#int(1e9 / self.sampling_rate)
         
         # Prepares variables for the ps5000aGetTimebase2 call
         time_interval_ns = ctypes.c_float()

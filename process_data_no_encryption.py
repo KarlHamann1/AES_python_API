@@ -3,7 +3,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
-folder_path = "data"
+folder_path = "data_no_encryption"
 
 # a list to store traces
 all_traces = []
@@ -58,12 +58,14 @@ average_trace_file = os.path.join(folder_path, "averaged_trace.npy") # Save in t
 np.save(average_trace_file, average_trace)
 print(f"Averaged trace saved to {average_trace_file}")
 
+'''
 # Plot the averaged trace
 plt.figure()
 plt.plot(average_trace, label="Average Trace")
-plt.title("Averaged Trace of Side Channel Attack")
+plt.title("Averaged Trace of No Encryption")
 plt.xlabel("Sample Points")
 plt.ylabel("Signal Amplitude")
 plt.legend()
 plt.grid()
 plt.show()
+'''

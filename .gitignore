@@ -40,8 +40,9 @@ Desktop.ini
 .vscode/
 *.code-workspace
 
-# Data files (optional, if you don't want to upload generated data)
+# Data files (optional, don't want to upload generated data)
 data/
+data_no_encryption/
 
 # Compiled binary files
 *.o

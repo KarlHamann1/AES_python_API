@@ -2,7 +2,7 @@ import numpy as np
 from encipher import EncipherAPI
 from picoscope_acquisition import DataAcquisition
 
-def batch_no_encryption(num_rounds=1000, sampling_rate=1e9, duration=20e-6, filename_prefix= "no_encrypt"):
+def batch_no_encryption(num_rounds=1000, sampling_rate=1e9, duration=0.012, filename_prefix= "no_encrypt"):
     """
     Performs multiple rounds of data acquisition without cryptographic operations.
     """
@@ -14,7 +14,7 @@ def batch_no_encryption(num_rounds=1000, sampling_rate=1e9, duration=20e-6, file
         sampling_rate=sampling_rate,
         duration=duration,
         channel="A",
-        trigger_channel="EXT",
+        trigger_channel="B",
         output_dir="data_no_encryption"
     )
 
@@ -44,9 +44,9 @@ def batch_no_encryption(num_rounds=1000, sampling_rate=1e9, duration=20e-6, file
 
 
 if __name__ == "__main__":
-    # Example configuration for 1000 acquisitions at 1 GS/s, 20 µs capture
+    #  configuration for 1000 acquisitions at 1 GS/s, each lasting 12 ms
     batch_no_encryption(
-        num_rounds=1000,
+        num_rounds=100,
         sampling_rate=1e9,
-        duration=20e-6
+        duration=0.012,       # 12 ms total capture
     )
