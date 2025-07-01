@@ -6,202 +6,262 @@ import time
 import os
 
 class DataAcquisition:
+    """
+    DataAcquisition for PicoScope 5000A:
+    - Allows user to select device resolution (8, 12, 14, 15, 16 bits)
+    - Uses a fixed default timebase=4 unless overridden
+    - Configurable trigger, capture channel, voltage range, etc.
+    - Provides prepare_block_mode() + capture_block() for block captures.
+    - Saves data to .npy (optional) or returns the waveform to the caller.
+    """
+
     def __init__(
         self,
-        sampling_rate=1e9,   # 1 GS/s
-        duration=0.012,       # 12 ms total capture
-        channel="A",
-        trigger_channel="B",
+        device_resolution_bits=8,
+        timebase=None,
+        sampling_rate_hz=1e9,
+        capture_duration_s=0.012,
+        capture_channel="A",
+        trigger_channel="EXT",
+        trigger_threshold_mV=100,
+        trigger_delay_samples=0,
+        auto_trigger_ms=1000,
+        coupling_mode="AC",
+        voltage_range="100MV",
         output_dir="data",
         filename_prefix=None
     ):
-        # Sets basic parameters
-        self.sampling_rate = sampling_rate
-        self.duration = duration
-        self.channel = channel
+        """
+        :param device_resolution_bits: ADC resolution in bits (8..16). Must be supported by your 5000A model.
+        :param timebase: Override for the scope's timebase (0..something). If None, default=4 is used.
+        :param sampling_rate_hz: A nominal sampling rate (not used if we pin timebase=4).
+        :param capture_duration_s: How long to capture, in seconds, for computing total samples.
+        :param capture_channel: e.g. "A"
+        :param trigger_channel: e.g. "B"
+        :param trigger_threshold_mV: trigger level in mV
+        :param trigger_delay_samples: how many post-trigger samples to offset
+        :param auto_trigger_ms: auto-trigger if no real trigger event in X ms
+        :param coupling_mode: "AC" or "DC"
+        :param voltage_range: "100MV","200MV","2V","5V", etc.
+        :param output_dir: folder to save .npy waveforms if desired
+        :param filename_prefix: optional prefix for saved files
+        """
+        self.device_resolution_bits = device_resolution_bits
+        self.timebase_user = timebase
+        self.sampling_rate_hz = sampling_rate_hz
+        self.capture_duration_s = capture_duration_s
+        self.capture_channel = capture_channel
         self.trigger_channel = trigger_channel
+        self.trigger_threshold_mV = trigger_threshold_mV
+        self.trigger_delay_samples = trigger_delay_samples
+        self.auto_trigger_ms = auto_trigger_ms
+        self.coupling_mode = coupling_mode
+        self.voltage_range = voltage_range
+
         self.output_dir = output_dir
-        
-        # Optional filename prefix for saved data
         self.filename_prefix = filename_prefix
-        
-        # Creates handle for the scope
-        self.chandle = ctypes.c_int16()
-        
-        # Ensures the output directory exists
+
+        # PicoScope handle
+        self.scope_handle = ctypes.c_int16()
         os.makedirs(self.output_dir, exist_ok=True)
-        
-        # Will hold the PicoScope's maximum ADC value
-        self.max_adc = None
+
+        # Max ADC value for 8-bit = 32512 (on 5000A series); 
+        # the driver scales automatically for >8 bits.
+        self.max_adc = ctypes.c_int16(32512)
+
+        self.max_samples = 0
+        self.ch_range_enum = None
+        self.timebase_final = 4  # default fallback
 
     def setup_picoscope(self):
-        # Opens the PicoScope device
-        status_open = ps.ps5000aOpenUnit(ctypes.byref(self.chandle), None, 1)
+        """
+        Opens the device, sets resolution, configures channel and trigger.
+        Sets a default timebase=4 if user didn't specify one.
+        """
+        # (1) Open the scope
+        status_open = ps.ps5000aOpenUnit(ctypes.byref(self.scope_handle), None, 1)
         try:
             assert_pico_ok(status_open)
             print("PicoScope connected successfully.")
         except:
-            if status_open in [286, 282]:  # Power source issues
-                ps.ps5000aChangePowerSource(self.chandle, status_open)
-                print("Power source updated. Please retry.")
+            if status_open in [286, 282]:  # power source warnings
+                ps.ps5000aChangePowerSource(self.scope_handle, status_open)
+                print("Power source issue corrected, please retry.")
             else:
                 raise
 
-        # Configures the chosen channel for data acquisition
-        channel = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.channel}"]
-        coupling = ps.PS5000A_COUPLING["PS5000A_AC"]  # AC coupling
-        ch_range_enum = ps.PS5000A_RANGE["PS5000A_100MV"] # 100 mV range
-        status = ps.ps5000aSetChannel(self.chandle, channel, 1, coupling, ch_range_enum, 0)
-        assert_pico_ok(status)
-        print(f"Channel {self.channel} configured for data acquisition.")
+        # (2) Set device resolution
+        resolution_enum = ps.PS5000A_DEVICE_RESOLUTION.get(f"PS5000A_DR_{self.device_resolution_bits}BIT", None)
+        if resolution_enum is None:
+            raise ValueError(f"Unsupported resolution: {self.device_resolution_bits} bits")
 
-        # Sets max ADC value (device-dependent)
-        self.max_adc = ctypes.c_int16(32512)
+        status_res = ps.ps5000aSetDeviceResolution(self.scope_handle, resolution_enum)
+        assert_pico_ok(status_res)
+        print(f"Device resolution set to {self.device_resolution_bits} bits.")
 
-        # Configures trigger on the EXT input
-        trigger_source = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.trigger_channel}"]
-        threshold = 100  # 100 mV threshold
-        threshold_adc = int(mV2adc(threshold, ch_range_enum, self.max_adc))
+        # (3) Configure the capture channel
+        channel_index = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.capture_channel}"]
+        coupling_enum = ps.PS5000A_COUPLING[f"PS5000A_{self.coupling_mode}"]
+        channel_range_enum = ps.PS5000A_RANGE[f"PS5000A_{self.voltage_range.upper()}"]
+
+        status_ch = ps.ps5000aSetChannel(
+            self.scope_handle,
+            channel_index,
+            1,  # enabled
+            coupling_enum,
+            channel_range_enum,
+            0   # offset in V
+        )
+        assert_pico_ok(status_ch)
+        self.ch_range_enum = channel_range_enum
+        print(f"Channel {self.capture_channel} configured: {self.coupling_mode} coupling, ±{self.voltage_range} range.")
+
+        # (4) Configure trigger
+        trigger_index = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.trigger_channel}"]
+        threshold_adc = int(mV2adc(self.trigger_threshold_mV, self.ch_range_enum, self.max_adc))
         direction = ps.PS5000A_THRESHOLD_DIRECTION["PS5000A_RISING"]
-        status = ps.ps5000aSetSimpleTrigger(
-            self.chandle,
-            1,                 # Enable trigger
-            trigger_source,
+        status_trig = ps.ps5000aSetSimpleTrigger(
+            self.scope_handle,
+            1,                       # enable
+            trigger_index,
             threshold_adc,
             direction,
-            0,                 # No trigger delay
-            1000               # AutoTrigger in ms if no trigger event
+            self.trigger_delay_samples,
+            self.auto_trigger_ms
         )
-        assert_pico_ok(status)
-        print(f"Trigger set on {self.trigger_channel} (Rising edge, threshold = {threshold} mV).")
+        assert_pico_ok(status_trig)
+        print(
+            f"Trigger on {self.trigger_channel}, threshold={self.trigger_threshold_mV} mV, "
+            f"delaySamples={self.trigger_delay_samples}, autoTrigger={self.auto_trigger_ms} ms."
+        )
 
-        # Calculates total samples for the chosen duration and sampling rate
-        total_samples = int(self.sampling_rate * self.duration)
+        # (5) Determine timebase
+        if self.timebase_user is not None:
+            self.timebase_final = self.timebase_user
+            print(f"Using user-specified timebase={self.timebase_final}.")
+        else:
+            # Default to timebase=4 for 5xxxA at higher resolutions
+            self.timebase_final = 4
+            print(f"No user timebase. Defaulting to timebase={self.timebase_final}.")
 
-        # Captures all data after the trigger
-        pre_trigger_samples = 0
-        post_trigger_samples = total_samples
-        self.max_samples = total_samples
+        # (6) Calculate how many samples to request
+        self.max_samples = int(self.sampling_rate_hz * self.capture_duration_s)
+        print(
+            f"Requested ~{self.max_samples} samples "
+            f"from {self.capture_duration_s*1e3:.3f} ms capture "
+            f"at {self.sampling_rate_hz/1e6:.3f} MS/s (approx)."
+        )
 
-        # Calculates timebase for the chosen sampling rate
-        timebase = 2#int(1e9 / self.sampling_rate)
-        
-        # Prepares variables for the ps5000aGetTimebase2 call
+        # Check feasibility with ps5000aGetTimebase2
         time_interval_ns = ctypes.c_float()
         returned_max_samples = ctypes.c_int32()
-        
-        # Configures the timebase in the driver
-        status = ps.ps5000aGetTimebase2(
-            self.chandle,
-            timebase,
+        status_tb = ps.ps5000aGetTimebase2(
+            self.scope_handle,
+            self.timebase_final,
             self.max_samples,
             ctypes.byref(time_interval_ns),
             ctypes.byref(returned_max_samples),
-            0
+            0  # segmentIndex
         )
-        assert_pico_ok(status)
-        
-        # Prints sampling summary
+        assert_pico_ok(status_tb)
         print(
-            f"Sampling at {self.sampling_rate/1e6:.1f} MS/s "
-            f"({self.sampling_rate/1e9:.1f} GS/s) for {self.duration*1e6:.1f} µs.\n"
-            f"Collecting {self.max_samples} samples with timebase={timebase}."
+            f"Timebase={self.timebase_final} confirmed. "
+            f"The driver reports ~{time_interval_ns.value:.2f} ns per sample."
         )
 
-        # Stores channel range enum for later use
-        self.ch_range_enum = ch_range_enum
-
-    def start_acquisition(self, round_number=None):
-        print("Waiting for trigger...")
-
-        # Starts block capture with all samples after the trigger event
-        status = ps.ps5000aRunBlock(
-            self.chandle,
-            0,                # 0 pre-trigger samples
-            self.max_samples, # all samples post-trigger
-            2,                # segment index
-            None,             # timeIndisposedMs
-            0,                # lpReady callback
-            None,             # pParameter
+    def prepare_block_mode(self):
+        """
+        Arms the scope for block capture (ps5000aRunBlock).
+        This starts the acquisition and waits for a trigger event.
+        We do NOT wait for 'IsReady' here - that happens in capture_block().
+        """
+        print("Arming scope with ps5000aRunBlock (Block Mode).")
+        # Pre-trigger samples = 0, post-trigger = self.max_samples
+        status_run = ps.ps5000aRunBlock(
+            self.scope_handle,
+            0,  # preTriggerSamples
+            self.max_samples,  # postTriggerSamples
+            self.timebase_final,
+            None,  # timeIndisposedMs
+            0,     # lpReady callback
+            None,
             None
         )
-        assert_pico_ok(status)
+        assert_pico_ok(status_run)
+        print("Scope is now waiting for a trigger...")
 
-        # Waits until data is ready or timeout
-        ready = ctypes.c_int16(0)
-        timeout = time.time() + 2  # 2-second timeout
-        while not ready.value:
-            ps.ps5000aIsReady(self.chandle, ctypes.byref(ready))
-            if time.time() > timeout:
-                print("Trigger not detected within timeout period.")
-                return False
+    def capture_block(self, timeout_s=2.0):
+        """
+        Waits up to 'timeout_s' seconds for the scope to trigger (or auto-trigger).
+        Then retrieves data into a NumPy array of mV. Returns that array.
+        """
+        is_ready = ctypes.c_int16(0)
+        t_deadline = time.time() + timeout_s
 
-        print("Trigger detected. Collecting data...")
+        # Wait for the block capture to complete
+        while not is_ready.value:
+            ps.ps5000aIsReady(self.scope_handle, ctypes.byref(is_ready))
+            if time.time() >= t_deadline:
+                print(f"Trigger timeout: no trigger within {timeout_s} seconds.")
+                return np.array([])  # or None
 
-        # Allocates buffer for data
-        buffer = (ctypes.c_int16 * self.max_samples)()
-        channel = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.channel}"]
-        
-        # Assigns buffer to the chosen channel
-        status = ps.ps5000aSetDataBuffer(
-            self.chandle,
-            channel,
-            ctypes.byref(buffer),
+        print("Trigger event detected, retrieving data...")
+
+        # Prepare a buffer in Python
+        buffer_array = (ctypes.c_int16 * self.max_samples)()
+        ch_idx = ps.PS5000A_CHANNEL[f"PS5000A_CHANNEL_{self.capture_channel}"]
+        status_buf = ps.ps5000aSetDataBuffer(
+            self.scope_handle,
+            ch_idx,
+            ctypes.byref(buffer_array),
             self.max_samples,
-            0,  # segment index
+            0,  # segmentIndex
             0   # downSampleRatioMode
         )
-        assert_pico_ok(status)
+        assert_pico_ok(status_buf)
 
-        # Retrieves captured data from the scope
         overflow = ctypes.c_int16()
-        num_samples = ctypes.c_uint32(self.max_samples)
-        status = ps.ps5000aGetValues(
-            self.chandle,
-            0,
-            ctypes.byref(num_samples),
-            1,  # downSampleRatio
-            0,  # downSampleRatioMode
-            0,  # segment index
+        collected_count = ctypes.c_uint32(self.max_samples)
+
+        status_get = ps.ps5000aGetValues(
+            self.scope_handle,
+            0,                           # start index
+            ctypes.byref(collected_count),
+            1,                           # downSampleRatio
+            0,                           # ratioMode (PS5000A_RATIO_MODE_NONE)
+            0,                           # segmentIndex
             ctypes.byref(overflow)
         )
-        assert_pico_ok(status)
+        assert_pico_ok(status_get)
 
-        # Converts data to millivolts
-        voltage_buffer = adc2mV(buffer, self.ch_range_enum, self.max_adc)
-        print(f"Captured data: {voltage_buffer[:10]}... (first 10 samples)")
+        # Convert raw ADC counts to millivolts
+        voltage_mv = adc2mV(buffer_array, self.ch_range_enum, self.max_adc)
+        print(
+            f"Acquired {collected_count.value} samples. "
+            f"First 10 samples (mV): {voltage_mv[:10]} ..."
+        )
 
-        # Saves the data to disk
-        self.save_data(voltage_buffer, round_number)
-        return True
+        # Optional: if you want to stop acquisition for each trace
+        # self.stop_acquisition()
 
-    def save_data(self, buffer, round_number=None):
-        # Generates a timestamp for unique filenames
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-
-        # Builds the optional prefix string
-        prefix_str = f"{self.filename_prefix}_" if self.filename_prefix else ""
-
-        # Chooses filename based on round_number
-        if round_number is not None:
-            filename = f"{prefix_str}data_round_{round_number}_{timestamp}.npy"
-        else:
-            filename = f"{prefix_str}data_{timestamp}.npy"
-
-        # Constructs full path and saves
-        filepath = os.path.join(self.output_dir, filename)
-        np.save(filepath, buffer)
-        print(f"Data saved to {filepath}.")
+        # Return as a NumPy array
+        waveform = np.array(voltage_mv[:collected_count.value], dtype=np.float32)
+        return waveform
 
     def stop_acquisition(self):
-        # Stops the PicoScope
-        status = ps.ps5000aStop(self.chandle)
+        """
+        Optional call to stop the scope if running repeated captures.
+        """
+        status = ps.ps5000aStop(self.scope_handle)
         assert_pico_ok(status)
-        print("PicoScope stopped.")
+        print("Scope acquisition stopped.")
 
     def close(self):
-        # Closes the PicoScope connection
-        if self.chandle:
-            status = ps.ps5000aCloseUnit(self.chandle)
+        """
+        Closes the scope so other processes can use it.
+        """
+        if self.scope_handle.value != 0:
+            status = ps.ps5000aCloseUnit(self.scope_handle)
             assert_pico_ok(status)
+            self.scope_handle = ctypes.c_int16(0)
             print("PicoScope connection closed.")

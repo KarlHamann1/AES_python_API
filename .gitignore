@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.npy
 
 # C extensions
 *.so
@@ -42,7 +43,20 @@ Desktop.ini
 
 # Data files (optional, don't want to upload generated data)
 data/
-data_no_encryption/
+pi/data_no_encryption/
+pi/data_pi_encryption/
+pi/data_pi_dummy/
+pi/data_pi_0dB_encryption/
+pi/data_pi_0dB_single_encryption/
+pi/data_pi_40dB_single_encryption/
+pi/data_pi_30dB_single_encryption/
+arduino/data_arduino_30dB_block_encryption/
+arduino/data_arduino_40dB_block_encryption/
+pi/data_pi_30dB_block_dummy/
+pi/data_pi_40dB_block_dummy/
+pi/data_pi_40dB_single_encryption_diff/
+
+
 
 # Compiled binary files
 *.o

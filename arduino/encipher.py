@@ -1,7 +1,5 @@
 import serial
 import time
-#from aes import *
-import threading
 
 class EncipherAPI:
     """

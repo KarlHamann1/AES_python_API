@@ -58,6 +58,7 @@ average_trace_file = os.path.join(folder_path, "averaged_trace.npy") # Save in t
 np.save(average_trace_file, average_trace)
 print(f"Averaged trace saved to {average_trace_file}")
 
+
 # Plot the averaged trace
 plt.figure()
 plt.plot(average_trace, label="Average Trace")
