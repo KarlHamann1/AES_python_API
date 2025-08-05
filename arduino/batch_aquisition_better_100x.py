@@ -123,7 +123,7 @@ def batch_with_encryption_averaged(
         output_dir             = output_dir,
         filename_prefix        = filename_prefix,
         bandwidth_limit_20mhz  = True,           # enable 20 MHz BW limiter
-        analogue_offset_mv     = 4.0             # +4 mV DC offset
+        analogue_offset_mv     = 2.0             # +4 mV DC offset
     )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
