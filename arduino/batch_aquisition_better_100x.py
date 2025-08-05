@@ -90,11 +90,11 @@ def capture_mean_for_plaintext(enc, scope, plaintext: bytes, n_avg: int) -> np.n
 def batch_with_encryption_averaged(
     num_blocks      = 10_000,      # number of distinct plaintexts (and files)
     n_avg           = 100,         # traces to average per plaintext
-    duration        = 0.0001,      # 0.1 ms window (focus on Round-1 / first byte)
-    filename_prefix = "encrypt_mean_b0_short",
-    output_dir      = "data_arduino_16MHz_tb3_125Msps_115200Bd_avg100_0p1ms_20MHzBW_15bit_ACoff4mV",
+    duration        = 0.0100,      # 0.01 s = 10 ms window for 1 MHz cpu
+    filename_prefix = "encrypt_mean",
+    output_dir      = "data_arduino_1MHz_tb16_4.81Msps_9600Bd_avg100_10ms_20MHzBW_12bit_ACoff4mV",
     port            = "COM7",
-    baud            = 115200
+    baud            = 9600
 ):
     # --- UART init (quiet connect message) ---
     with muted_stdout(True):
@@ -109,9 +109,9 @@ def batch_with_encryption_averaged(
     #     - +4 mV analogue offset (avoid lower-rail clipping)
     #     - 20 MHz bandwidth limiter enabled
     scope = DataAcquisition(
-        device_resolution_bits = 15,
-        timebase               = 3,              # request ~125 MS/s
-        sampling_rate_hz       = 125e6,          # nominal for metadata
+        device_resolution_bits = 12,
+        timebase               = 16,              # request timebase 16 (~4.81 MS/s)
+        sampling_rate_hz       = 4.81e6,          # nominal for metadata
         capture_duration_s     = duration,       # 0.1 ms window
         capture_channel        = "A",
         trigger_channel        = "EXT",
