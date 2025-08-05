@@ -55,6 +55,8 @@ arduino/data_arduino_40dB_block_encryption/
 pi/data_pi_30dB_block_dummy/
 pi/data_pi_40dB_block_dummy/
 pi/data_pi_40dB_single_encryption_diff/
+arduino/data_arduino*/
+
 
 
 

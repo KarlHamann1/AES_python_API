@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-High‑quality trace capture for the ATmega AES demo – compatible with the
-unmodified DataAcquisition class you supplied.
+High-quality trace capture for the ATmega AES @ 16 MHz
+
+Changes for high-rate, short-window capture:
+- Capture window: 0.7 ms (covers ~0.6 ms AES window + margin)
+- Target sampling rate: ~31.25 MS/s (timebase = 5, per Pico 5000A formula)
+- 12-bit resolution requested
+- UART at 115200 baud
 """
 
 import os, sys, csv, time, secrets
@@ -19,43 +24,36 @@ from arduino.encipher import EncipherAPI          # unchanged
 from picoscope_acquisition import DataAcquisition # your class
 
 # --------------------------------------------------------------------
-#  Helper: robust serial read_exact
-# --------------------------------------------------------------------
-def read_exact(ser, n_bytes: int, err_msg: str) -> bytes:
-    buf = bytearray()
-    while len(buf) < n_bytes:
-        chunk = ser.read(n_bytes - len(buf))
-        if not chunk:
-            raise TimeoutError(err_msg)
-        buf.extend(chunk)
-    return bytes(buf)
-
-# --------------------------------------------------------------------
 #  Main batch function
 # --------------------------------------------------------------------
 def batch_with_encryption(
     num_rounds      = 10_000,
-    duration        = 0.010,         # 10 ms
+    duration        = 0.0007,      # 0.7 ms window at 16 MHz (AES ~0.60 ms)
     filename_prefix = "encrypt",
-    output_dir      = "data_arduino_block",
-    port            = "COM5",
-    baud            = 9600
+    output_dir      = "data_arduino_16MHz_20dB_31Msps_115200Bd",
+    port            = "COM7",
+    baud            = 115200
 ):
     # ---------------- UART and scope initialisation ---------------
-    enc = EncipherAPI(port=port, baudrate=baud, timeout=1)
+    # Larger timeout is safer when running many rounds
+    enc = EncipherAPI(port=port, baudrate=baud, timeout=2)
 
+    # NOTE:
+    # - device_resolution_bits: request 12-bit (PS5000A maps allowed timebases by resolution)
+    # - timebase: 5 (per your formula; driver will return the actual sample interval)
+    # - sampling_rate_hz: target/nominal value for bookkeeping (driver decides final)
     scope = DataAcquisition(
         device_resolution_bits = 12,
-        timebase               = 43,           # ~1.56 MS/s
-        sampling_rate_hz       = 1.56e6,
-        capture_duration_s     = duration,
-        capture_channel        = "A",
-        trigger_channel        = "B",
-        trigger_threshold_mV   = 100,
-        trigger_delay_samples  = 0,
-        auto_trigger_ms        = 1000,
-        coupling_mode          = "AC",
-        voltage_range          = "10MV",
+        timebase               = 5,            # requested timebase (aim ~31.25 MS/s)
+        sampling_rate_hz       = 31.25e6,      # nominal; store for metadata, actual from driver
+        capture_duration_s     = duration,     # 0.7 ms window
+        capture_channel        = "A",          # PD on A
+        trigger_channel        = "EXT",        # hardware trigger from MCU
+        trigger_threshold_mV   = 300,          # adjust if needed for clean arming
+        trigger_delay_samples  = 0,            # capture from trigger edge
+        auto_trigger_ms        = 1000,         # safety auto-trigger
+        coupling_mode          = "AC",         # PD is usually AC-coupled
+        voltage_range          = "10MV",       # use your smallest stable range
         output_dir             = output_dir,
         filename_prefix        = filename_prefix
     )
@@ -64,44 +62,56 @@ def batch_with_encryption(
     csv_path = Path(output_dir) / "trace_overview.csv"
 
     try:
-        scope.setup_picoscope()
+        scope.setup_picoscope()  # program device; your class should resolve final timebase/sr
 
         with open(csv_path, "w", newline="") as csv_f:
             writer = csv.writer(csv_f)
             writer.writerow(
                 ["TraceIndex", "PlaintextHex", "CiphertextHex",
-                "FileName",  "Samples"]
+                "FileName", "Samples"]
             )
 
             for idx in trange(num_rounds, desc="Capturing"):
-                # 1  generate 16‑byte random plaintext
-                pt  = secrets.token_bytes(16)
+                # --- keep serial input clean before each round ---
+                enc.ser.reset_input_buffer()
+
+                # 1) Random plaintext (16 bytes)
+                pt = secrets.token_bytes(16)
                 pt_hex = pt.hex().upper()
 
-                # 2  send plaintext
+                # 2) Send plaintext to target
                 enc.set_state(pt)
 
-                # 3  arm scope
+                # 3) Arm scope for a new block
                 scope.prepare_block_mode()
 
-                # 4  trigger encryption
+                # 4) Trigger encryption window (MCU pulls trigger HIGH)
                 enc.encrypt()
 
-                # 5  capture waveform (retry once on empty data)
+                # 5) Capture waveform (retry once if empty)
+                wf = None
                 for attempt in (1, 2):
                     wf = scope.capture_block()
                     if wf is not None and len(wf):
                         break
                     print(f"[Warn] empty capture (attempt {attempt})")
                     time.sleep(0.05)
-                else:
+                if wf is None or len(wf) == 0:
                     raise RuntimeError("consecutive empty captures")
 
-                # 6  get ciphertext
-                ct = read_exact(enc.ser, 16, "ciphertext timeout")
+                # 6) Fetch ciphertext (host sends CMD_GET_STATE inside)
+                try:
+                    ct = enc.get_state()
+                except TimeoutError:
+                    # If device/host slips, clear buffer and continue
+                    enc.ser.reset_input_buffer()
+                    continue
+
                 ct_hex = ct.hex().upper()
 
-                # 7  save NPZ (trace + meta)
+                # 7) Save trace + metadata
+                #    NOTE: If your DataAcquisition returns float32 already, this cast is no-op.
+                #    If you later want smaller files, consider int16 storage + scale factor.
                 fname = f"{filename_prefix}_{idx:06d}.npz"
                 fpath = Path(output_dir) / fname
                 np.savez(
@@ -109,11 +119,11 @@ def batch_with_encryption(
                     trace      = wf.astype(np.float32),
                     plaintext  = np.frombuffer(pt, np.uint8),
                     ciphertext = np.frombuffer(ct, np.uint8),
-                    sr         = scope.sampling_rate_hz,
-                    timebase   = scope.timebase_final 
+                    sr         = scope.sampling_rate_hz,   # nominal target
+                    timebase   = scope.timebase_final      # actual timebase as reported by the driver
                 )
 
-                # 8  log to CSV
+                # 8) CSV log
                 writer.writerow([idx, pt_hex, ct_hex, fname, len(wf)])
                 if idx % 500 == 0:
                     csv_f.flush()

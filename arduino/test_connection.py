@@ -12,8 +12,8 @@ Leere Eingabe oder Ctrl‑C beendet das Programm.
 
 import serial, textwrap, threading, sys, time
 
-PORT = "COM5"     # anpassen
-BAUD = 4800       # oder 4800 etc.
+PORT = "COM7"     # anpassen
+BAUD = 115200     # oder 4800 etc.
 
 PLAINTEXT = bytes.fromhex(  # 16 Byte hart codiert
     "11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF 00"

@@ -71,8 +71,8 @@ class EncipherAPI:
     # --------------------------------------------------------
     def get_state(self) -> bytes:
         self.ser.write(self.CMD_GET_STATE)
-        data = _read_exact(self.ser, 16, "ciphertext timeout")   # neue Version
-        print("State received:", data.hex().upper())             # zeigt auch 00
+        data = _read_exact(self.ser, 16, "ciphertext timeout")
+        self.ser.reset_input_buffer()      # Rest garantiert leer
         return data
 
 

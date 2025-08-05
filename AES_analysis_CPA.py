@@ -31,9 +31,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # === Configuration ===
-data_dir = "pi/data_pi_40dB_single_encryption_diff"   # Folder containing 'trace_overview.csv' + .npy files
+data_dir = "arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100"   # Folder containing 'trace_overview.csv' + .npy files
 csv_file = os.path.join(data_dir, "trace_overview.csv")
-max_traces = 3000  # e.g., set to 2000 or None to use all
+max_traces = 10000  # e.g., set to 2000 or None to use all
 
 # Known true key (from #defines). If you have a real known key, place it here (hex string).
 # KEY_BYTE_0=0x81, 1=0x55, 2=0x64, 3=0x07, 4=0xE2, 5=0xB7, 6=0xC0, 7=0x90,

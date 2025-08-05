@@ -7,13 +7,13 @@ import time, signal, secrets, numpy as np
 from encipher import EncipherAPI           # gepatchte API mit Hex‑Print
 
 # ---- Konfiguration -------------------------------------------------
-PORT          = "COM5"
-BAUD          = 4800
+PORT          = "COM7"
+BAUD          = 9600         # 11520 Baud
 ROUNDS        = 10_000
 IDLE_GAP_S    = 0.0          # 0.1 s für sichtbare Pausen
 FIXED_PT      = None         # bytes.fromhex("00112233445566778899AABBCCDDEEFF")
 REPORT_EVERY  = 1000
-POST_ENC_WAIT = 0.020        # 20 ms Pause vor GET_STATE
+POST_ENC_WAIT = 0.050        # 5 ms, damit der AVR Zeit hat, die TX‑FIFO zu füllen
 
 # ---- Hauptschleife -------------------------------------------------
 def repeat_arithmetic():

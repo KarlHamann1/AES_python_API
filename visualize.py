@@ -12,8 +12,8 @@ import time
 PLOT_MODE = 1
 
 # If using single-file mode, set this path:
-FILEPATH_SINGLE = "pi/data_pi_30dB_10MV_block_mult_500_micro_with_300_micro_idle/mult_trace_block_0.npy"
-#FILEPATH_SINGLE = "arduino/data_arduino_40dB_block_encryption/encrypt_00000.npy"
+#FILEPATH_SINGLE = "pi/data_pi_30dB_10MV_block_mult_500_micro_with_300_micro_idle/mult_trace_block_0.npy"
+FILEPATH_SINGLE = "arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000000.npz"
 
 # If using two-file mode, set these two paths:
 FILEPATH_ONE = "pi/data_pi_40dB_single_encryption/aes_trace_round_0.npy"
