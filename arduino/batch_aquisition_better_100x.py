@@ -142,7 +142,7 @@ def batch_with_encryption_averaged(
                 "FileName", "Samples", "n_avg", "dt_ns"]
             )
 
-            for blk in trange(num_blocks, desc=f"Averaging {n_avg} traces per PT (0.1 ms @ ~125 MS/s)"):
+            for blk in trange(num_blocks, desc=f"Averaging {n_avg} traces per PT (10 ms @ ~4.81 MS/s)"):
                 # 1) choose plaintext
                 pt = secrets.token_bytes(16)
                 pt_hex = pt.hex().upper()
@@ -215,13 +215,4 @@ def batch_with_encryption_averaged(
 
 
 if __name__ == "__main__":
-    # tip: test smaller first, e.g., num_blocks=50, n_avg=20
-    batch_with_encryption_averaged(
-        num_blocks=10_000,
-        n_avg=100,
-        duration=0.0001,  # 0.1 ms short window
-        filename_prefix="encrypt_mean_b0_short",
-        output_dir="data_arduino_16MHz_tb3_125Msps_115200Bd_avg100_0p1ms_20MHzBW_15bit_DCoff4mV",
-        port="COM7",
-        baud=115200
-    )
+    batch_with_encryption_averaged()
