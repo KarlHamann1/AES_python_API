@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """
-Averaged trace capture for ATmega AES @ 16 MHz
+Generic averaged-trace capture script for an AVR-based AES target.
 
-Per block:
-- choose one random 16-byte plaintext
-- capture N_AVG traces for this plaintext (no ciphertext fetching in between)
-- average them (mean trace)
-- then fetch a single ciphertext for that plaintext
-- save one NPZ per block (mean trace + PT + CT + metadata)
+Workflow (per plaintext block)
+--------------------------------
+1. Pick one random 16-byte plaintext.
+2. Capture *n_avg* power/optical traces for this plaintext.
+3. Average them to a single mean trace.
+4. Fetch one ciphertext for this plaintext.
+5. Store everything in one *.npz* file (mean trace + PT + CT + metadata).
 
-Console output is minimized:
-- tqdm progress bar for outer loop (blocks)
-- a short heartbeat print every 100 blocks
+Console output is kept compact:
+* tqdm progress bar for blocks
+* heartbeat every 100 blocks
+
+Adjusted for:
+* 12-bit resolution
+* 31.25 MS/s (PicoScope timebase 5)
+* 57 600 Bd UART
+* ±20 mV input range with 20 MHz BW-limit
 """
 
 import os, sys, csv, time, secrets
@@ -20,20 +27,22 @@ import numpy as np
 from tqdm import trange
 from contextlib import contextmanager, redirect_stdout
 
-# --------------------------------------------------------------------
-#  Local imports
-# --------------------------------------------------------------------
+# ------------------------------------------------------------------
+#  Local imports (project-specific)
+# ------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT.parent))
 
-from arduino.encipher import EncipherAPI
-from picoscope_acquisition import DataAcquisition
+from arduino.encipher import EncipherAPI           # UART helper
+from picoscope_acquisition import DataAcquisition  # PicoScope helper
 
-# ---- small helper to silence verbose prints from underlying classes ----
+# ──────────────────────────────────────────────────────────────────
+#  Utils
+# ──────────────────────────────────────────────────────────────────
 @contextmanager
-def muted_stdout(enabled: bool = True):
-    if not enabled:
-        # no-op context
+def muted_stdout(enable: bool = True):
+    """Suppress noisy prints from driver classes when *enable* is True."""
+    if not enable:
         yield
         return
     import io
@@ -42,99 +51,91 @@ def muted_stdout(enabled: bool = True):
         with redirect_stdout(buf):
             yield
     finally:
-        # drop buffered text
         buf.close()
 
 
 def capture_mean_for_plaintext(enc, scope, plaintext: bytes, n_avg: int) -> np.ndarray:
     """
-    Capture n_avg traces for a fixed plaintext and return the mean trace (float32).
-    Output is averaged; individual traces are not stored.
+    Capture *n_avg* traces for a fixed plaintext and return their mean.
+    The returned vector is float32; individual traces are not stored.
     """
-    running_sum = None  # float64 for numeric stability
+    acc: np.ndarray | None = None  # running sum (float64 for stability)
 
     for _ in range(n_avg):
         enc.ser.reset_input_buffer()
 
-        # Send plaintext (quiet)
-        with muted_stdout(True):
+        with muted_stdout():
             enc.set_state(plaintext)
 
-        # Arm scope, trigger encryption, capture (quiet)
-        with muted_stdout(True):
+        with muted_stdout():
             scope.prepare_block_mode()
-        with muted_stdout(True):
+        with muted_stdout():
             enc.encrypt()
 
+        # grab one captured block (retry once on failure)
         wf = None
-        for attempt in (1, 2):
-            with muted_stdout(True):
+        for _ in (0, 1):
+            with muted_stdout():
                 wf = scope.capture_block()
             if wf is not None and len(wf):
                 break
             time.sleep(0.02)
         if wf is None or len(wf) == 0:
-            raise RuntimeError("Empty capture twice in a row")
+            raise RuntimeError("empty capture")
 
-        if running_sum is None:
-            running_sum = np.zeros_like(wf, dtype=np.float64)
-        elif running_sum.shape[0] != wf.shape[0]:
-            raise ValueError(f"Waveform length changed: got {wf.shape[0]}, expected {running_sum.shape[0]}")
+        if acc is None:
+            acc = np.zeros_like(wf, dtype=np.float64)
+        elif acc.shape[0] != wf.shape[0]:
+            raise ValueError("waveform length changed")
 
-        running_sum += wf.astype(np.float64)
+        acc += wf.astype(np.float64)
 
-    mean_trace = (running_sum / float(n_avg)).astype(np.float32)
-    return mean_trace
+    return (acc / float(n_avg)).astype(np.float32)
 
 
+# ──────────────────────────────────────────────────────────────────
+#  Main batch routine
+# ──────────────────────────────────────────────────────────────────
 def batch_with_encryption_averaged(
-    num_blocks      = 10_000,      # number of distinct plaintexts (and files)
-    n_avg           = 100,         # traces to average per plaintext
-    duration        = 0.0100,      # 0.01 s = 10 ms window for 1 MHz cpu
+    num_blocks      = 10_000,                       # plaintexts ↔ files
+    n_avg           = 100,                          # traces averaged / PT
+    duration        = 0.0015,                       # 1.5 ms capture window
     filename_prefix = "encrypt_mean",
-    output_dir      = "data_arduino_1MHz_tb16_4.81Msps_9600Bd_avg100_10ms_20MHzBW_12bit_ACoff4mV",
+    output_dir      = ("data_arduino_8MHz_tb5_31.25Msps_57600Bd_"
+                    "avg100_1.5ms_20MHzBW_12bit_ACoff2mV"),
     port            = "COM7",
-    baud            = 9600
+    baud            = 57_600
 ):
-    # --- UART init (quiet connect message) ---
-    with muted_stdout(True):
+    # -------- UART ----------
+    with muted_stdout():
         enc = EncipherAPI(port=port, baudrate=baud, timeout=2)
 
-    # --- Scope init for high-resolution short window:
-    #     - 15-bit resolution
-    #     - timebase = 3  (~125 MS/s; driver reports actual dt via GetTimebase2)
-    #     - EXT trigger (e.g., UART-RX of 16th byte)
-    #     - DC coupling (analogue offset requires DC path)
-    #     - ±10 mV input range
-    #     - +4 mV analogue offset (avoid lower-rail clipping)
-    #     - 20 MHz bandwidth limiter enabled
+    # -------- Scope ----------
     scope = DataAcquisition(
         device_resolution_bits = 12,
-        timebase               = 16,              # request timebase 16 (~4.81 MS/s)
-        sampling_rate_hz       = 4.81e6,          # nominal for metadata
-        capture_duration_s     = duration,       # 0.1 ms window
+        timebase               = 5,                 # Pico timebase 5 ≈ 31.25 MS/s
+        sampling_rate_hz       = 31.25e6,
+        capture_duration_s     = duration,
         capture_channel        = "A",
-        trigger_channel        = "EXT",
-        trigger_threshold_mV   = 300,            # e.g., 0.3 V on EXT
+        trigger_channel        = "EXT",             # e.g. UART-RX on EXT
+        trigger_threshold_mV   = 300,
         trigger_delay_samples  = 0,
         auto_trigger_ms        = 1000,
-        coupling_mode          = "AC",           # AC coupling for noise reduction
-        voltage_range          = "10MV",         # ±10 mV
+        coupling_mode          = "AC",
+        voltage_range          = "20MV",            # ±20 mV
         output_dir             = output_dir,
         filename_prefix        = filename_prefix,
-        bandwidth_limit_20mhz  = True,           # enable 20 MHz BW limiter
-        analogue_offset_mv     = 2.0             # +4 mV DC offset
+        bandwidth_limit_20mhz  = True,
+        analogue_offset_mv     = 2.0
     )
-
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     csv_path = Path(output_dir) / "trace_overview.csv"
 
     try:
-        # Setup scope (quiet)
-        with muted_stdout(True):
+        with muted_stdout():
             scope.setup_picoscope()
 
-        t_start = time.time()
+        t0 = time.time()
         with open(csv_path, "w", newline="") as csv_f:
             writer = csv.writer(csv_f)
             writer.writerow(
@@ -142,35 +143,27 @@ def batch_with_encryption_averaged(
                 "FileName", "Samples", "n_avg", "dt_ns"]
             )
 
-            for blk in trange(num_blocks, desc=f"Averaging {n_avg} traces per PT (10 ms @ ~4.81 MS/s)"):
-                # 1) choose plaintext
+            desc = f"avg {n_avg} traces  ({duration*1e3:.1f} ms window)"
+            for blk in trange(num_blocks, desc=desc):
                 pt = secrets.token_bytes(16)
-                pt_hex = pt.hex().upper()
-
-                # 2) average n_avg captures for this PT
                 try:
-                    mean_trace = capture_mean_for_plaintext(enc, scope, pt, n_avg=n_avg)
+                    mean_trace = capture_mean_for_plaintext(enc, scope, pt, n_avg)
                 except Exception as e:
-                    # minimal warning, continue with next block
-                    print(f"[Warn] block {blk}: capture failed ({e}), skipping.")
+                    print(f"[Warn] block {blk}: capture failed ({e}) – skip")
                     enc.ser.reset_input_buffer()
                     continue
 
-                # 3) fetch a single ciphertext for this PT (quiet)
+                # one ciphertext for this PT
                 try:
                     enc.ser.reset_input_buffer()
-                    with muted_stdout(True):
+                    with muted_stdout():
                         enc.set_state(pt)
                         enc.encrypt()
                         ct = enc.get_state()
                 except TimeoutError:
-                    print(f"[Warn] block {blk}: ciphertext timeout; skipping block.")
-                    enc.ser.reset_input_buffer()
+                    print(f"[Warn] block {blk}: CT timeout – skip")
                     continue
 
-                ct_hex = ct.hex().upper()
-
-                # 4) save NPZ (mean trace only)
                 fname = f"{filename_prefix}_{blk:06d}.npz"
                 fpath = Path(output_dir) / fname
                 np.savez(
@@ -178,40 +171,35 @@ def batch_with_encryption_averaged(
                     trace_mean = mean_trace,
                     plaintext  = np.frombuffer(pt, np.uint8),
                     ciphertext = np.frombuffer(ct, np.uint8),
-                    sr_nominal = scope.sampling_rate_hz,              # 125e6 nominal
-                    dt_ns      = getattr(scope, "time_interval_ns", None),  # actual from driver (ns)
+                    sr_nominal = scope.sampling_rate_hz,
+                    dt_ns      = getattr(scope, "time_interval_ns", None),
                     timebase   = scope.timebase_final,
                     n_avg      = n_avg
                 )
 
-                # 5) CSV log
-                writer.writerow([blk, pt_hex, ct_hex, fname, len(mean_trace),
-                                n_avg, getattr(scope, "time_interval_ns", None)])
+                writer.writerow(
+                    [blk, pt.hex().upper(), ct.hex().upper(), fname,
+                    len(mean_trace), n_avg,
+                    getattr(scope, "time_interval_ns", None)]
+                )
                 if blk % 200 == 0:
                     csv_f.flush()
 
-                # periodic heartbeat every 100 blocks
                 if (blk + 1) % 100 == 0:
-                    elapsed = time.time() - t_start
-                    rate = (blk + 1) / elapsed if elapsed > 0 else 0.0
-                    eta_s = (num_blocks - (blk + 1)) / rate if rate > 0 else float('inf')
-                    print(f"[{blk+1}/{num_blocks}] mean_len={len(mean_trace)}  "
-                        f"rate={rate:.2f} blk/s  ETA={eta_s/3600:.2f} h")
+                    elapsed = time.time() - t0
+                    rate = (blk + 1) / elapsed if elapsed else 0.0
+                    eta  = (num_blocks - blk - 1) / rate if rate else float('inf')
+                    print(f"[{blk+1}/{num_blocks}]  rate={rate:.2f} blk/s  "
+                        f"ETA={eta/3600:.2f} h")
 
-        print(f"\nDone. Averaged traces written to: {csv_path}")
+        print(f"\nDone. Overview CSV written to: {csv_path}")
 
     finally:
-        # best-effort cleanup (quiet)
-        try:
-            with muted_stdout(True):
-                scope.close()
-        except Exception:
-            pass
-        try:
-            with muted_stdout(True):
-                enc.close()
-        except Exception:
-            pass
+        with muted_stdout():
+            try:    scope.close()
+            except Exception: pass
+            try:    enc.close()
+            except Exception: pass
 
 
 if __name__ == "__main__":

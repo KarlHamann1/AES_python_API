@@ -8,7 +8,7 @@ from encipher import EncipherAPI           # gepatchte API mit Hex‑Print
 
 # ---- Konfiguration -------------------------------------------------
 PORT          = "COM7"
-BAUD          = 9600         # 11520 Baud
+BAUD          = 57_600         # 57 600 Baud
 ROUNDS        = 10_000
 IDLE_GAP_S    = 0.0          # 0.1 s für sichtbare Pausen
 FIXED_PT      = None         # bytes.fromhex("00112233445566778899AABBCCDDEEFF")

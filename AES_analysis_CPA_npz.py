@@ -22,9 +22,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ----------------- User configuration -----------------
-data_dir   = "arduino/data_arduino_16MHz_tb3_125Msps_115200Bd_avg100_0p1ms_20MHzBW_15bit_DCoff4mV"
+data_dir   = "arduino/data_arduino_1MHz_tb16_4.81Msps_9600Bd_avg100_10ms_20MHzBW_12bit_ACoff4mV"
 csv_file   = os.path.join(data_dir, "trace_overview.csv")
-max_blocks = 5000            # None = use all rows
+max_blocks = 10000            # None = use all rows
 true_key_hex = "81556407E2B7C090D23146B46CD554A2"  # optional; "" to disable
 
 # Optional Region Of Interest (choose one or None):
