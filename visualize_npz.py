@@ -28,7 +28,7 @@ import time
 PLOT_MODE = 1
 
 # If using single-file mode, set this path:
-FILEPATH_SINGLE = "arduino/data_arduino_1MHz_tb16_4.81Msps_9600Bd_avg100_10ms_20MHzBW_12bit_ACoff4mV/encrypt_mean_000001.npz"
+FILEPATH_SINGLE = "arduino/data_arduino_8MHz_tb5_31.25Msps_57600Bd_avg100_1.5ms_20MHzBW_12bit_ACoff2mV/encrypt_mean_000001.npz"
 
 # If using two-file mode, set these two paths:
 FILEPATH_ONE = "arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000000.npz"
