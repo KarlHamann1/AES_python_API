@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ----------------- User configuration -----------------
-data_dir   = "arduino/data_arduino_1MHz_tb16_4.81Msps_9600Bd_avg100_10ms_20MHzBW_12bit_ACoff4mV"
+data_dir   = "arduino/data_arduino_8MHz_tb5_31.25Msps_57600Bd_avg100_1.5ms_20MHzBW_12bit_ACoff2mV"
 csv_file   = os.path.join(data_dir, "trace_overview.csv")
 max_blocks = 10000            # None = use all rows
 true_key_hex = "81556407E2B7C090D23146B46CD554A2"  # optional; "" to disable
