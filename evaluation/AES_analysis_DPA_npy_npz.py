@@ -23,13 +23,12 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from Crypto.Cipher import AES
 
-# ── repo-aware roots (this file should live in AES_PYTHON_API/evaluation/…) ──
-REPO_ROOT    = Path(__file__).resolve().parents[1]  # AES_PYTHON_API/
+
+REPO_ROOT    = Path(__file__).resolve().parents[1]
 ARDUINO_DATA = REPO_ROOT / "arduino" / "data"
 PI_DATA      = REPO_ROOT / "pi" / "data"
 
-# ===== config =====
-# pick a dataset folder below (lives under arduino/data or pi/data)
+#  config 
 USE_PI_DATA       = True
 DATASET_DIR_NAME  = "data_pi_40dB_single_encryption_diff"  # e.g. "data_arduino_…"
 DATA_DIR          = (PI_DATA if USE_PI_DATA else ARDUINO_DATA) / DATASET_DIR_NAME
@@ -37,21 +36,21 @@ CSV_FILE          = DATA_DIR / "trace_overview.csv"        # expects PlaintextHe
 
 MAX_TRACES        = 6_000      # None = use all
 ROI_SAMPLES       = None       # e.g., (start, end) or None
-ROI_TIME_S        = None       # e.g., (t0, t1) seconds; needs dt_ns (from NPZ/CSV) or DT_NS_OVERRIDE
-DT_NS_OVERRIDE    = None       # float like 32.0 ns if I want to force a dt when CSV/NPZ don’t carry it
+ROI_TIME_S        = None       # e.g., (t0, t1)
+DT_NS_OVERRIDE    = None       # float like 32.0 
 
 PLOTS_DIR         = DATA_DIR / "plots_dpa"
 SAVE_PER_BYTE_PNG = True
 
-# known-good check: if DPA recovers the AES-128 key, encrypting PT should match CT
-# (first round key equals master key for AES-128 when attacking SubBytes(PT ^ K0))
+
+# (first round key equals master key for AES-128
 def verify_key(candidate_key: bytes, pt: bytes, ct: bytes) -> bool:
     if len(candidate_key) != 16:
         return False
     aes = AES.new(candidate_key, AES.MODE_ECB)
     return aes.encrypt(pt) == ct
 
-# AES S-box (tuple → np.array for vector indexing)
+# AES S-box
 SBOX = np.array((
     0x63,0x7C,0x77,0x7B,0xF2,0x6B,0x6F,0xC5,0x30,0x01,0x67,0x2B,0xFE,0xD7,0xAB,0x76,
     0xCA,0x82,0xC9,0x7D,0xFA,0x59,0x47,0xF0,0xAD,0xD4,0xA2,0xAF,0x9C,0xA4,0x72,0xC0,

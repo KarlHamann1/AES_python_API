@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
+
 """
 Interactive UART tester for the ATmega AES demo (binary protocol).
 
 Keys:
-  0  → 0x30 (CMD_SET_STATE)
-  1  → 0x31 (CMD_GET_STATE)
-  2  → 0x32 (CMD_ENCRYPT)
-  p  → 0x30 + 16-byte PLAINTEXT (hard-coded)
-  anything like '0xAA 23' → raw bytes
+0  → 0x30 (CMD_SET_STATE)
+1  → 0x31 (CMD_GET_STATE)
+2  → 0x32 (CMD_ENCRYPT)
+p  → 0x30 + 16-byte PLAINTEXT (hard-coded)
+anything like '0xAA 23' → raw bytes
 
 Empty line or Ctrl-C exits.
 """
@@ -21,7 +21,6 @@ PLAINTEXT = bytes.fromhex(  # 16 bytes, change if you like
     "11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF 00"
 )
 
-# ---------- helpers ------------------------------------------------
 def hexline(data: bytes) -> str:
     return " ".join(textwrap.wrap(data.hex().upper(), 2))
 
@@ -36,7 +35,6 @@ def reader_loop(ser: serial.Serial):
     except serial.SerialException:
         pass
 
-# ---------- main ---------------------------------------------------
 def main():
     try:
         ser = serial.Serial(PORT, BAUD, timeout=0.1, dsrdtr=False, rtscts=False)
@@ -67,7 +65,7 @@ def main():
                 ser.write(b"\x30" + PLAINTEXT)
                 print("  plaintext sent:", hexline(PLAINTEXT))
             else:
-                # send arbitrary byte list like "0xAA 23 5"
+                # send  byte list
                 for token in line.split():
                     try:
                         val = int(token, 0) & 0xFF

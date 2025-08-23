@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+
 """
 Baseline (noise-only) trace capture.
 
 No AES is triggered — the scope relies on auto-trigger after a timeout.
-Handy for building a reference noise set for filtering/SNR studies.
+for building a reference noise set for filtering/SNR studies.
 """
 
 import os, sys, csv, time, secrets   # secrets only to mimic plaintext bytes
@@ -11,9 +11,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import trange
 
-# ── Repo-aware imports ─────────────────────────────────────────────
-# This file lives at: AES_PYTHON_API/arduino/scripts/...
-REPO_ROOT   = Path(__file__).resolve().parents[2]   # AES_PYTHON_API/
+
+REPO_ROOT   = Path(__file__).resolve().parents[2]
 ARDUINO_DIR = REPO_ROOT / "arduino"
 SCOPE_DIR   = REPO_ROOT / "scope"
 
@@ -21,8 +20,8 @@ SCOPE_DIR   = REPO_ROOT / "scope"
 sys.path.append(str(ARDUINO_DIR / "scripts"))
 sys.path.append(str(SCOPE_DIR))
 
-from encipher import EncipherAPI                     # Arduino UART helper
-from picoscope_acquisition import DataAcquisition    # PicoScope helper
+from encipher import EncipherAPI                 
+from picoscope_acquisition import DataAcquisition  
 
 
 def batch_no_encryption(
@@ -82,7 +81,7 @@ def batch_no_encryption(
                     print("[Warn] auto-trigger timeout — empty capture")
                     continue
 
-                # 4) Save NPZ
+                # 4) Save the waveform
                 fname = f"{filename_prefix}_{idx:06d}.npz"
                 np.savez(
                     output_dir / fname,

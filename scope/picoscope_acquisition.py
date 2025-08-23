@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 PicoScope 5000A block-mode helper.
 
@@ -249,7 +248,7 @@ class DataAcquisition:
             try:
                 assert_pico_ok(ps.ps5000aCloseUnit(self.scope_handle))
             except Exception:
-                pass  # ignore invalid-handle on failed opens
+                pass  # ignore invalid-handle on failed
             finally:
                 self.scope_handle = ctypes.c_int16(0)
                 print("PicoScope connection closed.")

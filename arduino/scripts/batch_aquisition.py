@@ -14,9 +14,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import trange
 
-# ── Repo-aware imports ─────────────────────────────────────────────
-# This file lives at: AES_PYTHON_API/arduino/scripts/...
-REPO_ROOT   = Path(__file__).resolve().parents[2]   # AES_PYTHON_API/
+
+REPO_ROOT   = Path(__file__).resolve().parents[2] 
 ARDUINO_DIR = REPO_ROOT / "arduino"
 SCOPE_DIR   = REPO_ROOT / "scope"
 
@@ -28,7 +27,7 @@ from encipher import EncipherAPI                     # Arduino UART helper
 from picoscope_acquisition import DataAcquisition    # PicoScope helper
 
 
-# ── Main batch function ───────────────────────────────────────────
+#  Main batch function 
 def batch_with_encryption(
     num_rounds: int      = 10_000,
     duration: float      = 0.0007,         # 0.7 ms @ 31.25 MS/s ≈ 21,875 samples
@@ -46,11 +45,11 @@ def batch_with_encryption(
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / "trace_overview.csv"
 
-    # ----- UART (Arduino) -----
+    # UART (Arduino)
     # Slightly longer timeout helps during long runs
     enc = EncipherAPI(port=port, baudrate=baud, timeout=2)
 
-    # ----- Scope -----
+    # Scope
     scope = DataAcquisition(
         device_resolution_bits = 12,
         timebase               = 5,             # request ~31.25 MS/s
@@ -138,6 +137,5 @@ def batch_with_encryption(
         except Exception: pass
 
 
-# ── CLI ───────────────────────────────────────────────────────────
 if __name__ == "__main__":
     batch_with_encryption()

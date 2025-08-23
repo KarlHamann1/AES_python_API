@@ -14,8 +14,7 @@ import glob
 import numpy as np
 from pathlib import Path
 
-# ── repo-aware paths (this file should live in AES_PYTHON_API/pi/scripts/…) ──
-REPO_ROOT = Path(__file__).resolve().parents[2]   # AES_PYTHON_API/
+REPO_ROOT = Path(__file__).resolve().parents[2] 
 PI_DATA   = REPO_ROOT / "pi" / "data"
 
 # folder names inside pi/data (change if needed)
@@ -52,7 +51,7 @@ def main():
     for aes_path in aes_files:
         aes_path = Path(aes_path)
         trace_name = aes_path.name
-        out_path = OUT_DIFF_DIR / trace_name  # keep same name
+        out_path = OUT_DIFF_DIR / trace_name
 
         try:
             aes_trace = np.load(aes_path)

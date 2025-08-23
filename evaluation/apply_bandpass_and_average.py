@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 apply_bandpass_and_average.py
 
@@ -19,10 +18,7 @@ import numpy as np
 import scipy.signal as sps
 import matplotlib.pyplot as plt
 
-# ======================= USER PARAMETERS =========================
-# repo-aware roots (adjust if this file lives elsewhere)
-REPO_ROOT    = Path(__file__).resolve().parents[1]   # AES_PYTHON_API/
-PI_DATA_DIR  = REPO_ROOT / "pi" / "data"
+REPO_ROOT    = Path(__file__).resolve().parents[1] 
 ARDU_DATA_DIR= REPO_ROOT / "arduino" / "data"
 
 USE_PI_DATA       = True
@@ -31,21 +27,20 @@ DIRECTORY         = (PI_DATA_DIR if USE_PI_DATA else ARDU_DATA_DIR) / DATASET_DI
 
 # Sampling info
 SAMPLING_RATE = 62.5e6            # Hz (used for filter design/plots)
-DT_NS_OVERRIDE = None             # e.g., 32.0 to force dt if NPZ lacks dt_ns
+DT_NS_OVERRIDE = None             # e.g., 32.0 to force dt if NPZ misses dt_ns
 
 # Filter spec (Butterworth band-pass)
 LOW_CUTOFF_HZ  = 10e3             # Hz
 HIGH_CUTOFF_HZ = 1000e3           # Hz
-FILTER_ORDER   = 2                # filter "order" for butter(..., output='sos'); stable with SOS
+FILTER_ORDER   = 2                # filter order for butter
 
 # Optional ROI (crop before averaging)
 ROI_SAMPLES = None                # (start_idx, end_idx) or None
 ROI_TIME_S  = None                # (t0, t1) seconds or None; needs dt
-# Label + output
+
 LABELNAME        = f"Avg BPF ({int(LOW_CUTOFF_HZ/1e3)}–{int(HIGH_CUTOFF_HZ/1e3)} kHz)"
 OUTPUT_FILENAME  = f"averaged_trace_bpf_{int(LOW_CUTOFF_HZ)}_{int(HIGH_CUTOFF_HZ)}Hz.npy"
-SAVE_RESP_PNG    = False          # save the filter response plot alongside showing it
-# ================================================================
+SAVE_RESP_PNG    = False          # save the filter response plot
 
 
 def _load_waveform(path: Path, dt_holder: dict) -> np.ndarray:

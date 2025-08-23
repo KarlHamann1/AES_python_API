@@ -43,13 +43,13 @@ def batch_with_encryption(
 
     # 2) Create a DataAcquisition instance:
     #
-    #    - We use 'device_resolution_bits=12' for 12-bit mode.
+    #    - use 'device_resolution_bits=12' for 12-bit mode.
     #    - **timebase=43** => sample interval = (43 - 3) / 62.5e6 = ~640 ns => ~1.56 MS/s.
     #    - For a 10 ms capture, that yields ~15,600 samples (much less than timebase=4).
     #    - Coupling = "AC" if your photodiode/measurement chain needs it.
-    #    - voltage_range="10MV" is presumably ±10 mV range—adjust if you need more headroom.
-    #
-    # We keep 'capture_duration_s=duration' so the code can calculate how many samples it
+    #    - voltage_range="10MV" is presumably ±10 mV range—adjust 
+    
+    # keep 'capture_duration_s=duration' so the code can calculate how many samples it
     # expects. The final count will be near 1.56 MS/s * 0.01 s ≈ 15,600.
     data_acquisition = DataAcquisition(
         device_resolution_bits=12,

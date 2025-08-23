@@ -15,26 +15,24 @@ import numpy as np
 import scipy.signal as sps
 import matplotlib.pyplot as plt
 
-# ======================= USER PARAMETERS =========================
-# This script sits in AES_PYTHON_API/evaluation/ (assumed)
 REPO_ROOT        = Path(__file__).resolve().parents[1]
 
-# Point to a single trace; if relative, it's resolved against REPO_ROOT
+# Point to a single trace
 FILE_PATH        = Path("pi/data_pi_0dB_10MV_block_mult_500_micro_with_300_micro_idle/mult_trace_block_0.npy")
 
 SAMPLING_RATE    = 62.5e6     # Hz (used for design/plots)
 HIGH_PASS_CUTOFF = 5e6        # Hz
-FILTER_ORDER     = 2          # butter(..., output='sos') order
+FILTER_ORDER     = 2          # butter
 
 # Optional ROI
 ROI_SAMPLES      = None       # e.g., (start_idx, end_idx)
 ROI_TIME_S       = None       # e.g., (t0, t1), needs dt
 DT_NS_OVERRIDE   = None       # e.g., 16.0 to force 16 ns/sample
 
-# Plot saves (leave False to only show)
+# leave False to only show
 SAVE_RESP_PNG    = False
 SAVE_TRACE_PNG   = False
-# ================================================================
+
 
 
 def _resolve_input(path: Path) -> Path:
@@ -44,8 +42,7 @@ def _resolve_input(path: Path) -> Path:
     if path.is_file():
         return path
     cand = (REPO_ROOT / path)
-    return cand if cand.is_file() else path  # let the later check fail loudly
-
+    return cand if cand.is_file() else path 
 
 def _load_waveform(path: Path, dt_holder: dict) -> np.ndarray:
     """
@@ -137,7 +134,7 @@ def main():
         print("[warn] ROI too small for filtering.")
         return
 
-    # filter (zero-phase); retry with smaller pad if the vector is short  # sosfiltfilt
+    # filter
     try:
         filtered = sps.sosfiltfilt(sos, trace, padtype="odd", padlen=None)
     except ValueError as e:

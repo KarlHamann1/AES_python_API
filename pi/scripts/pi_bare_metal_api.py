@@ -16,7 +16,7 @@ import serial
 import time
 import struct
 
-# ---- Binary command bytes (match the hybrid kernel) ----
+#  Binary command bytes (match the hybrid kernel) 
 CMD_SET_STATE = 0x01    # +16 bytes
 CMD_GET_STATE = 0x02    # -> 16 bytes
 CMD_ENCRYPT   = 0x03    # run AES once (GPIO16 toggled in firmware)
@@ -39,7 +39,7 @@ class PiBareMetalAPI:
         self.ser.reset_input_buffer()
         self.ser.reset_output_buffer()
 
-    # ---------------- Binary protocol (used by acquisition) ----------------
+    #  Binary protocol (used by acquisition) 
     def set_state(self, pt16: bytes) -> None:
         if len(pt16) != 16:
             raise ValueError("Plaintext must be 16 bytes.")
@@ -64,7 +64,7 @@ class PiBareMetalAPI:
             raise TimeoutError("Timed out reading ciphertext (16 bytes).")
         return ct
 
-    # ---------------- ASCII helpers (optional) -----------------------------
+    #  ASCII helpers (optional) 
     def flush_input(self) -> None:
         """Dump any pending ASCII text (useful right after connect)."""
         out = b""
@@ -93,7 +93,7 @@ class PiBareMetalAPI:
     def run_dummy(self, iterations: int) -> None:
         self.send_command(f"dummy {iterations}")
 
-    # ---------------- Cleanup ----------------------------------------------
+    #  Cleanup 
     def close(self) -> None:
         try:
             self.ser.close()

@@ -21,12 +21,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# ── repo-aware paths (this file should live in AES_PYTHON_API/evaluation/…) ──
-REPO_ROOT      = Path(__file__).resolve().parents[1]   # AES_PYTHON_API/
-ARDUINO_DATA   = REPO_ROOT / "arduino" / "data"
-PI_DATA        = REPO_ROOT / "pi" / "data"             # kept here for convenience if I switch datasets
 
-# ----------------- user configuration -----------------
+REPO_ROOT      = Path(__file__).resolve().parents[1] 
+ARDUINO_DATA   = REPO_ROOT / "arduino" / "data"
+PI_DATA        = REPO_ROOT / "pi" / "data"
+
+#  user configuration 
 # choose the dataset folder name under arduino/data (or change to PI_DATA)
 DATASET_DIR_NAME = "data_arduino_8MHz_tb5_31.25Msps_57600Bd_avg100_1.5ms_20MHzBW_12bit_ACoff2mV"
 data_dir_path    = ARDUINO_DATA / DATASET_DIR_NAME
@@ -43,7 +43,6 @@ ROI_TIME_S  = None               # e.g., (t0, t1) seconds (needs dt_ns)
 SHOW_CORR_PLOT = True            # show correlation curve for byte 0 (best vs wrong)
 SAVE_PLOT_PATH = None            # e.g., "corr_byte0.png" or None to just show()
 
-# ------------------------------------------------------
 
 # Hamming Weight lookup
 HW = np.array([bin(x).count("1") for x in range(256)], dtype=np.uint8)
@@ -73,8 +72,8 @@ def hex_to_bytes16(h: str) -> bytes:
     return bytes.fromhex(h)
 
 def main():
-    # ---------- load CSV + NPZ ----------
-    data_dir = str(data_dir_path)         # keep old string-based joins below
+    #  load CSV + NPZ 
+    data_dir = str(data_dir_path) 
     csv_path = str(csv_file)
 
     pts, cts, traces = [], [], []
@@ -152,7 +151,7 @@ def main():
     else:
         s0, s1 = 0, L  # for labeling later
 
-    # ---------- precompute centered traces ----------
+    #  precompute centered traces 
     trace_means = np.mean(traces, axis=0)       # (L,)
     t_diff = traces - trace_means               # (N,L)
     ss_t = np.sum(t_diff * t_diff, axis=0)      # (L,)

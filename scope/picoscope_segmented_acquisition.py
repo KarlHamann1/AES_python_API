@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Segmented captures with a PicoScope 5000A.
 
@@ -76,9 +76,9 @@ class SegmentedPicoScopeAcquisition:
         self.trig_range_enum = None      # range used for trigger ADC scaling (EXT or trig channel)
         self.num_segments = 1
 
-    # ─────────────────────────────────────────────────────────────────────
+
     # Setup
-    # ─────────────────────────────────────────────────────────────────────
+    
     def open_unit_and_setup(self):
         """Open the device, set resolution, channels, trigger, and timebase."""
         # 1) Open
@@ -189,9 +189,7 @@ class SegmentedPicoScopeAcquisition:
 
         print(f"Segmented mode ready: {self.num_segments} segments, up to {returned_max.value} samples/segment.")
 
-    # ─────────────────────────────────────────────────────────────────────
     # Acquisition
-    # ─────────────────────────────────────────────────────────────────────
     def run_segmented_capture(self) -> bool:
         """
         Start a single runBlock able to record num_segments triggers.
@@ -252,9 +250,8 @@ class SegmentedPicoScopeAcquisition:
         np.save(path, waveform)
         print(f"Segment {seg_idx}, run {run_idx}, saved to {path}")
 
-    # ─────────────────────────────────────────────────────────────────────
-    # Housekeeping
-    # ─────────────────────────────────────────────────────────────────────
+    # Control
+    
     def stop(self):
         """Stop the scope if I want to abort between runs."""
         ps.ps5000aStop(self.scope_handle)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Averaged-trace capture for an AVR-based AES target (Arduino).
 
@@ -33,7 +33,7 @@ from encipher import EncipherAPI                    # UART helper (Arduino)
 from picoscope_acquisition import DataAcquisition   # PicoScope helper
 
 
-# ── Small utils ───────────────────────────────────────────────────
+#  utils
 @contextmanager
 def muted_stdout(enable: bool = True):
     """Silence noisy driver prints when *enable* is True."""
@@ -86,11 +86,11 @@ def capture_mean_for_plaintext(
     return (acc / float(n_avg)).astype(np.float32)
 
 
-# ── Main batch routine ────────────────────────────────────────────
+# ── Main batch routine: Adjust This!
 def batch_with_encryption_averaged(
     num_blocks: int      = 10_000,                    # plaintexts ↔ files
     n_avg: int           = 100,                       # traces averaged / PT
-    duration: float      = 0.0015,                    # 1.5 ms capture window
+    duration: float      = 0.00015,                    # 0.15 ms capture window
     filename_prefix: str = "encrypt_mean",
     out_dir_name: str    = ("data_arduino_8MHz_tb5_31.25Msps_57600Bd_"
                             "avg100_1.5ms_20MHzBW_12bit_ACoff2mV"),
@@ -105,11 +105,11 @@ def batch_with_encryption_averaged(
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / "trace_overview.csv"
 
-    # ----- UART (Arduino) -----
+    #UART (Arduino) 
     with muted_stdout():
         enc = EncipherAPI(port=port, baudrate=baud, timeout=2)
 
-    # ----- Scope -----
+    # Scope
     scope = DataAcquisition(
         device_resolution_bits = 12,
         timebase               = 5,          # Pico timebase 5 ≈ 31.25 MS/s
@@ -125,7 +125,7 @@ def batch_with_encryption_averaged(
         output_dir             = str(output_dir),
         filename_prefix        = filename_prefix,
         bandwidth_limit_20mhz  = True,
-        analogue_offset_mv     = 2.0
+        analogue_offset_mv     = 10.0
     )
 
     try:

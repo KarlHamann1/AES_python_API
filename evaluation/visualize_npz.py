@@ -18,22 +18,20 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ------------------------- User config -------------------------
 PLOT_MODE = 1  # 1 = single, 2 = compare two files
 
 # Single-file mode:
-FILEPATH_SINGLE = Path("arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000000.npz")
+FILEPATH_SINGLE = Path("arduino/data/data_tvla_INTERLEAVED_16MHz_tb3_125Msps_115200Bd_10kR_10kF_15bit_AC_20MHzBW/tvla_I_R_000020.npz")
 
 # Two-file mode:
 FILEPATH_ONE = Path("arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000000.npz")
 FILEPATH_TWO = Path("arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000001.npz")
 
-# Optional: override repo root (defaults to .../AES_PYTHON_API)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-# ---------------------------------------------------------------
 
 
-# ---------- small helpers ----------
+#  small helpers 
 def _resolve(path: Path) -> Path:
     """Resolve relative paths against repo root."""
     if path.is_absolute() and path.exists():
@@ -137,7 +135,7 @@ def _plot_single(wf: np.ndarray, md: dict, label: str):
     plt.ylabel("Amplitude (mV)")
     plt.title(label)
 
-# ---------- modes ----------
+#  modes 
 def visualize_single_file(path: Path):
     f = _resolve(path)
     wf, md = _load_any(f)
@@ -179,7 +177,6 @@ def visualize_two_files(p1: Path, p2: Path):
     print(_meta_str(m2))
 
 
-# ------------------------- main -------------------------
 def main():
     if PLOT_MODE == 1:
         visualize_single_file(FILEPATH_SINGLE)

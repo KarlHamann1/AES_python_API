@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 TVLA (Welch t-test) capture — interleaved RANDOM/FIXED — ATmega AES @ 16 MHz.
 
@@ -12,7 +11,7 @@ How to evaluate:
 3) Plot t(t); sustained |t| > 4.5 → leakage
 
 Tip: interleaving (done here) reduces drift. We avoid fetching CTs to keep UART quiet.
-Default profile aims at a short Round-1 window (0.1 ms) with ~125 MS/s (timebase=3).
+Default profile aims at a short Round-1 window (0.1 ms) with ~125 MS/s (timebase=3). (for 16 MHz clock rate)
 """
 
 import os, sys, csv, time, secrets
@@ -27,11 +26,10 @@ SCOPE_DIR   = REPO_ROOT / "scope"
 sys.path.append(str(ARDUINO_DIR / "scripts"))
 sys.path.append(str(SCOPE_DIR))
 
-from encipher import EncipherAPI                    # UART helper
-from picoscope_acquisition import DataAcquisition   # PicoScope helper
+from encipher import EncipherAPI                   
+from picoscope_acquisition import DataAcquisition 
 
 
-# ── Small util: silence noisy prints when needed ───────────────────
 @contextmanager
 def muted_stdout(enable: bool = True):
     if not enable:
@@ -55,7 +53,7 @@ def capture_single_trace(enc: EncipherAPI,
     """
     enc.ser.reset_input_buffer()
     with muted_stdout():
-        enc.set_state(plaintext)   # send PT only; don't fetch CT here
+        enc.set_state(plaintext)   # send PT only
         scope.prepare_block_mode()
         enc.encrypt()
 
@@ -73,15 +71,15 @@ def capture_single_trace(enc: EncipherAPI,
     return wf.astype(np.float32)
 
 
-# ── Main TVLA capture (INTERLEAVED) ────────────────────────────────
+#  Main TVLA capture (INTERLEAVED) 
 def tvla_capture_interleaved(
     n_random: int     = 10_000,    # RANDOM traces
     n_fixed: int      = 10_000,    # FIXED traces
     fixed_pt_hex: str = "00000000000000000000000000000000",
 
     # 16 MHz “Round-1” profile (short window, high SR)
-    duration: float   = 0.0001,    # 0.1 ms window
-    device_bits: int  = 15,        # 12 is fine; 15 if you want max fidelity
+    duration: float   = 0.0001,    # 0.10 ms window (16 MHz target)
+    device_bits: int  = 15,        # 12 is fine also
     timebase: int     = 3,         # ~125 MS/s on many 5000A/D (driver confirms dt)
     sampling_hz: float= 125e6,     # nominal for metadata
 
@@ -89,13 +87,14 @@ def tvla_capture_interleaved(
     out_dir_name: str = ("data_tvla_INTERLEAVED_16MHz_tb3_125Msps_115200Bd_"
                         "10kR_10kF_15bit_AC_20MHzBW"),
 
+
     # comms / scope
     port: str              = "COM7",
     baud: int              = 115200,
     trig_threshold_mV: int = 300,    # EXT threshold
-    voltage_range: str     = "10MV", # ±10 mV on Channel A
+    voltage_range: str     = "20MV", # ±20 mV on Channel A
     bandwidth_limit_20mhz: bool = True,
-    analogue_offset_mv: float = 0.0,
+    analogue_offset_mv: float = 4.0,
     coupling_mode: str     = "AC"
 ):
     fixed_pt = bytes.fromhex(fixed_pt_hex)
@@ -105,11 +104,11 @@ def tvla_capture_interleaved(
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / "trace_overview.csv"
 
-    # ---- UART ----
+    #  UART 
     with muted_stdout():
         enc = EncipherAPI(port=port, baudrate=baud, timeout=2)
 
-    # ---- Scope ----
+    #  Scope 
     scope = DataAcquisition(
         device_resolution_bits = device_bits,
         timebase               = timebase,
@@ -139,14 +138,14 @@ def tvla_capture_interleaved(
                 "FileName", "Samples", "dt_ns", "timebase"]
             )
 
-            # Interleave: R, F, R, F, ... and stop exactly at n_random / n_fixed
+        # Interleave
             r_count = f_count = order_idx = 0
             pbar = tqdm(total=(n_random + n_fixed),
                         desc=f"TVLA interleaved  ({duration*1e3:.1f} ms window)")
 
             next_group = "R"  # start with RANDOM
             while r_count < n_random or f_count < n_fixed:
-                # pick group; if one is done, use the other
+                # groups
                 if next_group == "R":
                     grp = "F" if r_count >= n_random and f_count < n_fixed else "R"
                 else:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Aggregate traces in a folder and compute an average trace.
 
@@ -11,15 +11,14 @@ from pathlib import Path
 import sys
 import numpy as np
 
-# ── Repo-aware paths ───────────────────────────────────────────────
 REPO_ROOT     = Path(__file__).resolve().parents[2]   
 ARDUINO_DATA  = REPO_ROOT / "arduino" / "data"
 
-# pick your data folder name
+# pick data folder name
 DIR_NAME      = "data_arduino_noise"                       
 DATA_DIR      = ARDUINO_DATA / DIR_NAME
 
-# ── File loading helpers ───────────────────────────────────────────
+#  File loading helpers 
 _PREFERRED_KEYS = ("trace", "trace_mean", "waveform", "data")
 
 def _load_trace_file(p: Path) -> np.ndarray:
@@ -37,7 +36,7 @@ def _load_trace_file(p: Path) -> np.ndarray:
 
     raise ValueError(f"Unsupported file type: {p}")
 
-# ── Collect files ─────────────────────────────────────────────────
+#  Collect files 
 if not DATA_DIR.exists():
     sys.exit(f"[Error] Data folder not found: {DATA_DIR}")
 
@@ -45,7 +44,7 @@ files = sorted(list(DATA_DIR.glob("*.npz")) + list(DATA_DIR.glob("*.npy")))
 if not files:
     sys.exit(f"[Error] No .npz/.npy files found in: {DATA_DIR}")
 
-# ── Load all traces ───────────────────────────────────────────────
+#  Load all traces 
 traces = []
 lengths = []
 for f in files:
@@ -69,7 +68,7 @@ if any(L != min_len for L in lengths):
 all_traces = np.vstack(traces)                 # shape (N, L)
 avg_trace  = all_traces.mean(axis=0)           # shape (L,)
 
-# ── Save outputs next to the inputs ───────────────────────────────
+#  Save outputs next to the inputs 
 all_traces_path = DATA_DIR / "all_traces.npy"
 avg_trace_path  = DATA_DIR / "averaged_trace.npy"
 

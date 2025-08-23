@@ -16,12 +16,12 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ---------------- user params ----------------
-REPO_ROOT   = Path(__file__).resolve().parents[1]  # AES_PYTHON_API/
+
+REPO_ROOT   = Path(__file__).resolve().parents[1]
 DATA_SUBDIR = "pi/data_pi_40dB_block_mult_500_micro"
 CSV_NAME    = "trace_overview_mult_block.csv"
 
-FS_HZ            = 62.5e6          # sampling rate (used for rfftfreq if no dt)
+FS_HZ            = 62.5e6          # sampling rate
 MAX_TRACES       = 10_000          # None for all
 ROI_SAMPLES      = None            # e.g., (s0, s1) or None
 ROI_TIME_S       = None            # e.g., (t0, t1) seconds or None

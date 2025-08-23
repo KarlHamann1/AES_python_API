@@ -29,8 +29,8 @@ REPO_ROOT    = Path(__file__).resolve().parents[1]
 ARDUINO_DATA = REPO_ROOT / "arduino" / "data"
 PI_DATA      = REPO_ROOT / "pi" / "data"
 
-# === Configuration ============================================================
-# choose the dataset folder under arduino/data (or swap to PI_DATA below)
+#  Configuration 
+# choose the dataset folder
 DATASET_DIR_NAME = "data_arduino_16MHz_tb5_31Msps_115200Bd_avg100"
 DATA_DIR         = ARDUINO_DATA / DATASET_DIR_NAME
 CSV_FILE         = DATA_DIR / "trace_overview.csv"
@@ -38,7 +38,7 @@ CSV_FILE         = DATA_DIR / "trace_overview.csv"
 # cap number of traces (None = use all)
 MAX_TRACES = 10_000
 
-# known (optional) true key as hex (16 bytes)
+# known true key as hex (16 bytes)
 TRUE_KEY_HEX = "81556407E2B7C090D23146B46CD554A2"
 
 # Region of interest:
@@ -50,7 +50,6 @@ DT_NS_OVERRIDE  = None             # set to a number (e.g., 32.0) if CSV doesn't
 SHOW_CORR_PLOT  = True
 SAVE_PLOT_PATH  = None             # e.g., DATA_DIR/"corr_byte0.png" or None
 
-# =============================================================================
 
 # Hamming weight (0..255)
 HW = np.array([bin(x).count("1") for x in range(256)], dtype=np.uint8)

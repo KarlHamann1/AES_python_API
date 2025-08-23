@@ -30,7 +30,7 @@ sys.path.append(str(SCOPE_DIR))
 from pi_bare_metal_api import PiBareMetalAPI
 from picoscope_acquisition import DataAcquisition
 
-# ---- utility to silence verbose prints from helpers ----
+# utility to silence verbose prints from helpers 
 @contextmanager
 def muted_stdout(enable: bool = True):
     if not enable:

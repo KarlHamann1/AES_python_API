@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Compare two averaged traces:
 - one from AES-encrypted runs
@@ -12,9 +12,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ── Repo-aware paths ───────────────────────────────────────────────
 
-REPO_ROOT   = Path(__file__).resolve().parents[2]         # AES_PYTHON_API/
+REPO_ROOT   = Path(__file__).resolve().parents[2] 
 ARDUINO_DATA = REPO_ROOT / "arduino" / "data"
 
 # Set the *folder names* in arduino/data (edit these two lines as needed)
@@ -28,7 +27,7 @@ AVERAGED_TRACE_FILENAME = "averaged_trace.npy"
 enc_path  = ARDUINO_DATA / ENCRYPTION_DIR_NAME   / AVERAGED_TRACE_FILENAME
 noise_path = ARDUINO_DATA / NO_ENCRYPTION_DIR_NAME / AVERAGED_TRACE_FILENAME
 
-# ── Load averaged traces ───────────────────────────────────────────
+#  Load averaged traces 
 def load_vec(p: Path) -> np.ndarray:
     if not p.exists():
         sys.exit(f"[Error] Missing file: {p}")
@@ -44,7 +43,7 @@ avg_noise = load_vec(noise_path)
 if avg_enc.shape != avg_noise.shape:
     sys.exit(f"[Error] Shape mismatch: enc {avg_enc.shape} vs noise {avg_noise.shape}")
 
-# ── Differences & metrics ──────────────────────────────────────────
+#  Differences & metrics 
 diff = avg_enc - avg_noise
 
 mad  = np.mean(np.abs(diff))
@@ -56,7 +55,7 @@ print(f"- Mean Absolute Difference (MAD): {mad:.6g}")
 print(f"- Root Mean Square Error (RMSE): {rmse:.6g}")
 print(f"- Max Absolute Difference:       {mx:.6g}")
 
-# ── Plot ───────────────────────────────────────────────────────────
+#  Plot 
 plt.figure(figsize=(10, 6))
 plt.plot(avg_enc,   label="Average Trace (Encryption)", linestyle="--")
 plt.plot(avg_noise, label="Average Trace (No Encryption)", linestyle="-")
