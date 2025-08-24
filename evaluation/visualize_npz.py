@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 PLOT_MODE = 1  # 1 = single, 2 = compare two files
 
 # Single-file mode:
-FILEPATH_SINGLE = Path("arduino/data/data_tvla_INTERLEAVED_16MHz_tb3_125Msps_115200Bd_10kR_10kF_15bit_AC_20MHzBW/tvla_I_R_000020.npz")
+FILEPATH_SINGLE = Path("pi/data/data_pi_20dB_10MV_block_mult_500_micro_with_300_micro_idle/mult_trace_block_11.npy")
 
 # Two-file mode:
 FILEPATH_ONE = Path("arduino/data_arduino_16MHz_tb5_31Msps_115200Bd_avg100/encrypt_mean_000000.npz")
